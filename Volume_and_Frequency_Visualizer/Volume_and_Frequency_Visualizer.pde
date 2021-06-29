@@ -165,6 +165,8 @@ void draw_volume_bar(){
 }
 
 void draw_freq_grid(){
+
+  // X grid in linear scale
   for(int x = 0 + X_DIST, count = 0; x <= X_MAX; x += X_DIST){
     if(count % X_ENUM == 0){
       stroke(126);
@@ -177,11 +179,15 @@ void draw_freq_grid(){
     }
     count++;
   }
+
+  // Y grid
   for(int y = 0; y <= Y_MAX; y += Y_DIST){
     line(X_OFFSET, y + Y_WINDOW + Y_OFFSET, X_MAX + X_OFFSET, y + Y_WINDOW +  Y_OFFSET);
     textSize(16);
     text( -y + Y_MAX, 7, y + Y_WINDOW + Y_OFFSET + 6);
   }
+  
+
   textSize(32);
   fill(graphColor); 
   text("128-Channel Freq. Spectrum Analyser", 115, Y_WINDOW + 40);
@@ -193,6 +199,7 @@ void draw_freq_grid(){
 }
 
 void draw_freq_bar(){
+  
   for(int i = 0, count = 0; i < 128; i++){
     fill(graphColor);
     rect(i * X_DIST + X_OFFSET + X_DIST - COL_WIDTH/2, height - BOT_DIST, COL_WIDTH, -frequency[i]);
