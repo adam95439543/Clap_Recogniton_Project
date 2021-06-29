@@ -16,7 +16,7 @@ void setup() {
   ADCSRA = (1 << ADEN) | 
            (1 << ADSC) |
            (1 << ADATE) |
-           (1 << ADPS2) | (1 << ADPS0);
+           (1 << ADPS2) | (1 << ADPS1 ) | (1 << ADPS0);
   ADMUX = 0x40; // use adc0
   DIDR0 = 0x01; // turn off the digital input for adc0 
 
@@ -56,7 +56,7 @@ void loop() {
       k <<= 6; // form into a 16b signed int by multipling 2^6
       fht_input[i] = k; // put real data into bins
       
-      ADCSRA = 0xf5; // restart adc
+      ADCSRA |= (1 << ADSC); // restart adc
 
       if(ADC_IN < 1024)
         if(ADC_IN > signalMax) signalMax = ADC_IN;

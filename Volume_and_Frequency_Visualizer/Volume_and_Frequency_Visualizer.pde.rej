@@ -1,0 +1,10 @@
+diff a/Volume_and_Frequency_Visualizer/Volume_and_Frequency_Visualizer.pde b/Volume_and_Frequency_Visualizer/Volume_and_Frequency_Visualizer.pde	(rejected hunks)
+@@ -165,6 +165,8 @@
+ }
+ 
+ void draw_freq_grid(){
++
++  // X grid in linear scale
+   for(int x = 0 + X_DIST, count = 0; x <= X_MAX; x += X_DIST){
+     if(count % X_ENUM == 0){
+       stroke(126);

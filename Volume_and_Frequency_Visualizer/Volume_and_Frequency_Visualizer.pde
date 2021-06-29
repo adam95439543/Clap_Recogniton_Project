@@ -199,7 +199,6 @@ void draw_freq_grid(){
 }
 
 void draw_freq_bar(){
-  
   for(int i = 0, count = 0; i < 128; i++){
     fill(graphColor);
     rect(i * X_DIST + X_OFFSET + X_DIST - COL_WIDTH/2, height - BOT_DIST, COL_WIDTH, -frequency[i]);
