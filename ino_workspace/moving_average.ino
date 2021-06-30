@@ -52,13 +52,13 @@ int count_upper_signals(){
 
 /* Change the state between 0 and 1 */
 void change_state(int upper_signal){
-    const int level = 29; // level = 25 -> too low, level = 35 -> too much
+    const int level = 30; // level = 25 -> too low, level = 35 -> too much
     boolean statusOK = upper_signal > level; // check the signal if there are more 'upper signals' than the level
 
     statusBuffer |= statusOK; // add checked bit to LSB of buffer
     
     boolean isAcceptable = 
-    (bitRead(statusBuffer, 7) | bitRead(statusBuffer, 6) | bitRead(statusBuffer, 5) | bitRead(statusBuffer, 4)) 
+    (bitRead(statusBuffer, 6) | bitRead(statusBuffer, 5) | bitRead(statusBuffer, 4)) 
     & 
     (bitRead(statusBuffer, 2) | bitRead(statusBuffer, 1) | bitRead(statusBuffer, 0));
 
@@ -73,7 +73,7 @@ void change_state(int upper_signal){
             state = 0;
         }
         statusBuffer = 0; // clear the buffer
-        delay(10);
+        delay(50);
     }
     else{
         statusBuffer <<= 1; // shift the buffer
