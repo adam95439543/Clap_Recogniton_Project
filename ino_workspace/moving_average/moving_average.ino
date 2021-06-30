@@ -3,19 +3,20 @@
 #define FHT_N 256
 #include <FHT.h>
 
-/* Global Variables */
 uint8_t amplitude[FHT_N * 2];
 uint8_t avg[FHT_N / 2];
-uint8_t statusBuffer; // Acts as Status Queue
+uint8_t statusBuffer[5]; // Acts as Status Queue
+uint8_t secondBuffer[256]; // second buffer for statusBuffer's output
 int state;
 int cnt;
 
-/* Moving Average Funtion */
-//   if n = 0 : avg_0 = fht_log_out
-//   else :     avg_(n+1) = alpha * fht_log_out + (1 - alpha) * avg_(n)
-//
-//   Apply 'fht_log_out' to 'avg_(n+1)' only if :
-//       lower limit < fht_log_out < upper limit
+/*  Moving Average
+    if n = 0 : avg_0 = fht_log_out
+    else :     avg_(n+1) = alpha * fht_log_out + (1 - alpha) * avg_(n)
+    
+    Apply 'fht_log_out' to 'avg_(n+1)' only if :
+        lower limit < fht_log_out < upper limit
+*/
 int count_upper_signals(){
     if(cnt < 3){
         cnt++;
@@ -50,20 +51,15 @@ int count_upper_signals(){
     return upper_signal;
 }
 
-/* Change the state between 0 and 1 */
 void change_state(int upper_signal){
-    const int level = 29; // level = 25 -> too low, level = 35 -> too much
-    boolean statusOK = upper_signal > level; // check the signal if there are more 'upper signals' than the level
+    const int level = 30;
+    boolean statusOK = upper_signal > level;
 
-    statusBuffer |= statusOK; // add checked bit to LSB of buffer
+    statusBuffer[4] = statusOK;
+
+    secondBuffer[1] = !statusBuffer[0] & !statusBuffer[1] & statusBuffer[2] & !statusBuffer[3] & !statusBuffer[4];
     
-    boolean isAcceptable = 
-    (bitRead(statusBuffer, 7) | bitRead(statusBuffer, 6) | bitRead(statusBuffer, 5) | bitRead(statusBuffer, 4)) 
-    & 
-    (bitRead(statusBuffer, 2) | bitRead(statusBuffer, 1) | bitRead(statusBuffer, 0));
-
-    // State Machine
-    if(isAcceptable){
+    if(secondBuffer[0] & secondBuffer[1]){
         if(state == 0){
             digitalWrite(LED_BUILTIN, HIGH);
             state = 1;
@@ -72,12 +68,13 @@ void change_state(int upper_signal){
             digitalWrite(LED_BUILTIN, LOW);
             state = 0;
         }
-        statusBuffer = 0; // clear the buffer
-        delay(10);
     }
-    else{
-        statusBuffer <<= 1; // shift the buffer
-    }
+
+    for(int i = 0; i < sizeof(statusBuffer)/sizeof(statusBuffer[0]) - 1; i++)
+        statusBuffer[i] = statusBuffer[i + 1];
+    
+    for(int i = 0; i < sizeof(secondBuffer)/sizeof(secondBuffer[0]) - 1; i++)
+        secondBuffer[i] = secondBuffer[i + 1];
 }
 
 void setup(){
