@@ -1,0 +1,34 @@
+=개발 스펙=
+
+녹음기
+
+1. 녹음되어야 하는 정보 
+All Data : [ index, time, Volume data ], [ index, time, Freq data ], 
+Labeled Data : [ " ], [ " ]
+
+2. 볼륨 그래프, 주파수 그래프
+1) 볼륨 : y축 범위 수정
+2) 주파수 : y축 로그 스케일로 수정, x축 0~128로 수정
++ 막대 그래프로 보기 기능
+
+3. 녹음 ON/OFF 기능
+1) 스페이스바 누름 -> 녹음 시작. All Data, Labeled Data 파일 Open
+2) 스페이스바 누름 -> 녹음 종료. All Data, Labeled Data 파일 Close
+3) 엔터 누름 -> 버튼을 누른 순간 부터 앞 뒤 +- 10 ms 간격 내의 정보를 Labeled Data에도 같이 저장
+   (녹음을 하며 동시에 라벨링을 편하게 할 수 있음)
+
+4. 타이머 기능 : 별도 UI를 두어서 표시
+1) T 버튼을 누름 -> 12초 타이머 시작. All Data, Labeled Data 파일 Open
+2) 2초후부터 1초에 한번씩 화면의 한 부분이 깜박임 + 지금 몇 번째인지 알려줌
+3) 깜박이는 순간의 앞 뒤 +- 10 ms 간격 내의 정보를 Labeled Data에도 같이 저장
+4) 12초가 지남 -> 녹음 종료. All Data, Labeled Data 파일 Close
+
+
+
+검증기
+
+1. Labeled Data 파일로부터 (Vol, Freq) CSV를 읽어서 그래프에 디스플레이함
+
+2. "Detection" 코드 부분 삽입
+
+3. 라벨과 Detection 결과를 비교하여 정확도를 계산, 파일 읽기 종료 후 정확도를 리턴
