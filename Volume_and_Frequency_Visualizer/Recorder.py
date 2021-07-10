@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-from numpy import genfromtxt, sqrt
+# import pandas as pd
+# from numpy import genfromtxt, sqrt
 import serial
 import keyboard
 from datetime import datetime
