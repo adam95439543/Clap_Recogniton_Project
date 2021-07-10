@@ -3,17 +3,21 @@ import numpy as np
 import pandas as pd
 from numpy import genfromtxt, sqrt
 import serial
-import sys
 import keyboard
 from datetime import datetime
+import threading
+import os
+import psutil
+
+current_system_pid = os.getpid()
 
 MAX_INT = 2**31 - 1
 N = 256 
 __time__ = datetime.now().strftime('%Y-%m-%d %H-%M-%S')
 
 # set serial port
-ser = serial.Serial('COM4', 115200, timeout = 1)
-print("start serial")
+# ser = serial.Serial('COM4', 115200, timeout = 1)
+# print("start serial")
 
 # initializing plot lines
 x = range(0, N)
@@ -41,6 +45,31 @@ file_all_volume = open("[All] VOL " + __time__ + ".csv", 'w')
 file_all_freq = open("[All] FREQ " + __time__ + ".csv", 'w')
 file_label_volume = open("[Label] VOL " + __time__ + ".csv", 'w')
 file_label_freq = open("[Label] FREQ " + __time__ + ".csv", 'w')
+
+# keyboard input thread
+class KeyboardWorker(threading.Thread):
+    
+    def __init__(self):
+        super().__init__()        # thread 이름 지정
+
+    def run(self):
+        global state
+        while True:
+            key_buf = keyboard.read_key()
+            keyboard.read_key() # clear buffer
+            if key_buf == 'space':
+                if state == True:
+                    # file close
+                    file_all_volume.close()
+                    file_all_freq.close()
+                    file_label_volume.close()
+                    file_label_freq.close()
+                state = not state
+            if key_buf == 'esc':       
+                ThisSystem = psutil.Process(current_system_pid)
+                ThisSystem.terminate() # kill process
+            
+        
 
 def process_serial_event(volume, frequency):
     ADCH = 0
@@ -87,37 +116,19 @@ def process_data_out(file_all_volume, file_all_freq, volume, frequency, index, m
     file_all_volume.write(data_volume)
     file_all_freq.write(data_freq)
 
+thread = KeyboardWorker()
+thread.daemon = True
+thread.start() 
+
 while True:
     if ser.readable() & (ser.read() == b'\xFF'): # start_byte = (ser.read() == b'\xFF')
         
         elapsed_time = datetime.now()
         milliSeconds = (elapsed_time - start_time).microseconds * 0.001
 
-        key_buf = keyboard.read_key()
-        keyboard.read_key() # clear buffer
-        if key_buf == 'space':
-            if state == False:    
-                state = True
-                
-            else:                 
-                state = False
-                # file close
-                file_all_volume.close()
-                file_all_freq.close()
-                file_label_volume.close()
-                file_label_freq.close()
-        
-        # if key_buf == 'enter':
-        #     # process labeled data
-        #     if state == True:
-
-        if key_buf == 'esc':
-            sys.exit() # kill process
-    
-        
         process_serial_event(volume, frequency)
         
-        if state == True:
+        if state:
             process_data_out(file_all_volume, file_all_freq, volume, frequency, index, milliSeconds)
 
         draw_graph(volume, frequency)
