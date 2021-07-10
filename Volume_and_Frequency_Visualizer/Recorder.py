@@ -16,8 +16,8 @@ N = 256
 __time__ = datetime.now().strftime('%Y-%m-%d %H-%M-%S')
 
 # set serial port
-# ser = serial.Serial('COM4', 115200, timeout = 1)
-# print("start serial")
+ser = serial.Serial('COM4', 115200, timeout = 1)
+print("start serial")
 
 # initializing plot lines
 x = range(0, N)
@@ -49,11 +49,9 @@ file_label_freq = open("[Label] FREQ " + __time__ + ".csv", 'w')
 # keyboard input thread
 class KeyboardWorker(threading.Thread):
     
-    def __init__(self):
-        super().__init__()        # thread 이름 지정
-
     def run(self):
         global state
+        global current_system_pid
         while True:
             key_buf = keyboard.read_key()
             keyboard.read_key() # clear buffer
