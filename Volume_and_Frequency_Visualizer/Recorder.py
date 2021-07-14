@@ -20,7 +20,7 @@ N = 256
 __time__ = datetime.now().strftime('%Y-%m-%d %H-%M-%S') # set in file's name
 
 # set serial port
-ser = serial.Serial('COM4', 115200, timeout = 1) # change to your computer's port name
+ser = serial.Serial('COM4', 115200, timeout = 1) # 사용자의 컴퓨터 환경에 맞는 COM PORT로 바꿔주세용
 print("start serial")
 
 # initializing plot lines

@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 # please select All or Label
-select_All = True    # Label 파일을 읽어올려면 False를 입력해주세용
+select_All = False    # All 파일을 읽어올려면 True 를 입력해주세용
 __name__ = "[All]" if select_All else "[Label]"
 
 # please set time
@@ -39,18 +39,33 @@ def draw_graph(volume, frequency):
     fig.canvas.draw()
     fig.canvas.flush_events() 
 
+def detection_code(volume, frequency, current_time):
+    return False
+
+# global variables
+count = 0
+
 while True:
     data_volume = file_volume.readline()
     data_freq = file_freq.readline()
 
     if not data_volume or not data_freq: break # readline() returns ""(empty string) when there are no lines to read
 
+    if data_volume == '\n' and data_freq == '\n':
+        print(f'{count}th captured data')
+        count += 1
+        continue
+
     index = int(data_volume.split(',')[0]) if data_volume.split(',')[0] == data_freq.split(',')[0] else False
     current_time = float(data_volume.split(',')[1]) if data_volume.split(',')[1] == data_freq.split(',')[1] else False
+
+    if not index or not current_time: print("volume file and freq file are different")
     
-    volume = [int(data) for data in data_volume.split(',')[2:-1]]
-    frequency = [int(data) for data in data_freq.split(',')[2:-1]]
+    volume = [int(data) for data in data_volume.split(',')[2:-1]] # 256 elements
+    frequency = [int(data) for data in data_freq.split(',')[2:-1]] # 128 elements
 
     draw_graph(volume, frequency)
 
     time.sleep(delay_time)
+
+    if detection_code(volume, frequency, current_time): False
