@@ -129,9 +129,10 @@ class DataProcess:
         self.data_volume = str(DataProcess.index) + "," + str(current_time) + ","
         self.data_freq = str(DataProcess.index) + "," + str(current_time) + ","
 
-        for i in range(128):
-            self.data_volume += (str(volume[i]) + ",")
-            self.data_freq += (str(frequency[i]) + ",")
+        for element in volume:
+            self.data_volume += (str(element) + ",")
+        for element in frequency:
+            self.data_freq += (str(element) + ",")
         self.data_volume += "\n"
         self.data_freq += "\n"
         
