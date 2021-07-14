@@ -48,8 +48,8 @@ while True:
     index = int(data_volume.split(',')[0]) if data_volume.split(',')[0] == data_freq.split(',')[0] else False
     current_time = float(data_volume.split(',')[1]) if data_volume.split(',')[1] == data_freq.split(',')[1] else False
     
-    volume = [int(data) for data in data_volume.split(',')[2:-1]]
-    frequency = [int(data) for data in data_freq.split(',')[2:-1]]
+    volume = [int(data) for data in data_volume.split(',')[2:-1]]    # 256 elements
+    frequency = [int(data) for data in data_freq.split(',')[2:-1]]   # 128 elements
 
     draw_graph(volume, frequency)
 
