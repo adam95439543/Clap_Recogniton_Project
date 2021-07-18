@@ -9,6 +9,7 @@ __name__ = "[All]" if select_All else "[Label]"
 # please set time
 __time__ = "2021-07-18 08-07-08"    # 파일의 날짜와 시간을 입력해주세용
 
+#----------------------------------------------------------------------------------------------------------------------
 # file open
 file_volume = open(__name__ + " VOL " + __time__ + ".csv", 'r')
 file_freq = open(__name__ + " FREQ " + __time__ + ".csv", 'r')
@@ -39,7 +40,7 @@ def draw_graph(volume, frequency):
     fig.canvas.draw()
     fig.canvas.flush_events() 
 
-#---------------------------------------------------------------------------------------    
+#----------------------------------------------------------------------------------------------------------------------
 # detection code variables
 T = 0
 mean = 0
@@ -49,6 +50,7 @@ N = 0
 sound_detected = False
 detected_clock_count = 0
 
+# get average of array
 def AVR(arr, powered_avg = False):
     sum = 0
     if powered_avg :
@@ -59,6 +61,7 @@ def AVR(arr, powered_avg = False):
             sum += i
     return sum / len(arr)
 
+# get number of elements bigger than the cut off
 def COUNT(arr, cutOff = -1):
     cnt = 0
     for i in arr:
@@ -70,7 +73,7 @@ def detection_code(fft_log_out):
     global sound_detected, detected_clock_count
     clap_detected = False
 
-    if T % 10: # 85 * 11 = 935
+    if T % 10: # 85 ms * 11 = 935 ms. while루프가 한 번 도는데 85 ms 걸리므로 11번 카운트하면 대충 1000 ms 가 된다.
         mean = AVR(fft_log_out)
         sd = np.sqrt(AVR(fft_log_out, True) - mean * mean)
         T = 0
@@ -79,6 +82,15 @@ def detection_code(fft_log_out):
     for i in range(len(fft_log_out)):
         standard_score[i] = (fft_log_out[i] - mean)/sd * 10 + 50
 
+    '''
+    # 저주파 범위의 주파수들은 기본적으로 큰 값을 갖음 -> 애네가 평균을 dominant 하게 잡아먹음
+    # 조용한 상태에서 cut off 보다 큰 표준 점수 값을 갖는 저주파 주파수들이 default로 2~3개 정도 존재함
+    # 그래서 아래 라인에서 논문과는 다르게 N은 3이하로 잡아줬다.
+    # cut off도 논문처럼 70이면 저주파 주파수의 표준점수만 cuf off를 넘길래
+      일부러 65 정도로 낮춰서 고주파 주파수의 표준점수들도 cut off를 쉽게 넘길 수 있도록 하였음.
+
+    # 만약 시끄러운 상태라면 디폴트 저주파의 표준 점수 값이 작아질지도? (추측임)
+    '''
     if N <= 3:
         N = COUNT(standard_score, cutOff=65)
         if not sound_detected and N > 3:
@@ -98,7 +110,7 @@ def detection_code(fft_log_out):
         detected_clock_count = 0
 
     return clap_detected
-#---------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------------------
 
 # global variables
 count = 0
