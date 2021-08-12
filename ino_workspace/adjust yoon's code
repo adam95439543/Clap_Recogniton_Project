@@ -1,0 +1,272 @@
+#if 1
+#define LOG_OUT 1 
+#define FHT_N 256 
+#include <FHT.h> 
+// 1회에 0.0275초 정도 걸림. 10번에 0.275초 / 20번에 0.55초 / 30번에 0.75 / 40번에 1.1 / 50번에 1.375
+//https://m.blog.naver.com/PostView.naver?isHttpsRedirect=true&blogId=dododokim&logNo=221463847309
+
+
+
+
+/* Available Constants */
+
+const int   WA_CASE = 5;                                            // 가중평균 구간 개수, WA는 Weighted_Average를 의미한다.
+const int   WA_INTERVAL[WA_CASE + 1] = {0, 10, 45, 75, 105, 128};   // 분할 기준 i 값
+const float WA_WEIGHT[WA_CASE] = {0.5, 1, 4, 1, 4};                 // 구간별 가중치, 평가를 통해 변경
+
+const int   AVG_INTERVAL = 15;       // 이전 자료를 평균내는 범위 
+const int   CLAP_INTERVAL = 5;       // 박수 직후 다른 소음 무시하는 시간이자, 두번째 박수까지의 최소 시간.  5번의 루프 사이클(0.0275*5sec)
+const int   SILENT_INTERVAL = 20;    // 박수로 인정받기 위해 조용해야 하는 시간 
+const int   OFFSET_INTERVAL = 5;     // 박수소리 평균을 구하는 구간. 
+const float RATE_OFFSET = 0.7;       // 박수소리 평균과 현재 소음의 차이에 곱해주어 offset 강도 조절. 
+
+
+
+
+/* Global Variables Setting */
+
+int hurdle = 0;      // 넘겨야 하는 diff 기준치 , 배경 소음과 박수 소리에 따라 달라짐. 초기 값은 setup에서 지정. offset_flexible->hurdle
+int offset_mean = 0;          // 박수 소리 주파수 평균 값. 초기 값은 setup에서 지정.
+int offset_tmp[OFFSET_INTERVAL] = {0, };
+int offset_pointer = 0;
+
+int avg_new = 40;
+int avg_avg = 40; // avg of avg에 더 가까움 //avg_prev -> avg_avg
+int avg_buf = 0;
+int avg_tmp[AVG_INTERVAL] = {0, };
+int avg_pointer = 0;
+
+int diff = 0;
+int clap_count = 0;
+int state_LED = 0;
+
+unsigned long interval_tcount = 0; // 구간 time count
+unsigned long sum = 0;
+
+
+
+
+/* Setup */
+
+void setup() {
+  Serial.begin(115200); 
+  TIMSK0 = 0; // turn off timer0 for lower jitter
+
+  ADCSRA = (1 << ADEN) | 
+           (1 << ADSC) |
+           (1 << ADATE) |
+           (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+  ADMUX = 0x40; // use adc0
+  DIDR0 = 0x01; // turn off the digital input for adc0 
+
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  for (int i = 0; i < AVG_INTERVAL; i++) avg_tmp[i] = 50;
+  for (int i = 0; i < OFFSET_INTERVAL; i++) offset_tmp[i] = 90;
+  offset_mean = offset_tmp[0];
+  hurdle = (offset_tmp[0] - avg_tmp[0]) * RATE_OFFSET;
+}
+
+
+
+
+/* hurdle을 구하는 부분 */
+
+int get_offset_mean(int avg_buf){
+  if(offset_pointer == OFFSET_INTERVAL) {
+    offset_pointer = 0;
+  }
+    offset_tmp[offset_pointer++] = avg_buf;
+
+    unsigned long sum_array = 0;
+    for(int i = 0; i < OFFSET_INTERVAL; i++) sum_array += offset_tmp[i];
+
+    return sum_array / OFFSET_INTERVAL;
+}
+
+
+
+
+/* 이전 소리와 현재 소리의 크기 차이를 구하는 부분
+    현재 주파수 크기 평균(avg_new)과 이전 주파수 크 평균(avg_prev) 비교
+    if 현재 소리가 이전 소리보다 더 크다면, 그 차이를 diff에 할당한다.
+    else diff = 0 으로 둔다.
+*/
+void Avg_Difference(){ // 함수 명칭을 직관적으로 변경
+  if (avg_new > avg_avg){
+    diff = avg_new - avg_avg;
+  }
+  else
+    diff = 0;
+}
+
+
+
+
+/* 박수 감지 및 카운팅
+      if diff 가 일정 값 이상인 경우, 
+      if 앞서 조용했다면, !clap_count = 1
+      그렇다면 박수 횟수 clap_count 를 1로 올린다.(박수 셀 준비) 
+      else if 셀 준비가 되어있고, and 박수 간의 최소 간격 시간(interval_clap)이 지났다면,
+      박수를 세고, 박수 간격 카운터(interval_tcount)를 초기화한다.
+      else 박수 간의 최소 간격 시간(interval_clap) 전에 시끄러운경우
+      무시하고, 박수 간격 카운터(interval_tcount)를 초기화 해 다시 기다린다.
+*/
+void Clap_detect(){
+  if (diff > hurdle) {
+    Serial.println("clap!!!!!!!!!!!!!!!!!!!!!!!");
+    if (!clap_count){
+      clap_count = 1;
+      interval_tcount = 0;
+    }
+    else if (interval_tcount > CLAP_INTERVAL){
+      interval_tcount = 0;
+      clap_count++;
+      if (clap_count == 2){
+         avg_buf = avg_new;
+      }
+    }
+    else if (interval_tcount <= CLAP_INTERVAL){
+      interval_tcount = 0;
+    }  
+  }
+}
+
+// 편의를 위한 clap_count 초기화 함수
+void Clear(){
+  clap_count = 0;
+}
+
+
+
+
+/* 박수 두번 판단
+    if 인정 대기시간 (interval_silent)동안 조용했고 and 박수 감지 모드라면, 
+    if 박수 카운트(Clap_count)가 두번인 경우,
+    박수 두번으로 인정하고 LED를 켜거나 끈다.
+    이후 초기화한다.
+    else 그냥 소음으로 판정, 초기화한다.
+ */
+void Doubleclap_detect(){
+  if (interval_tcount > SILENT_INTERVAL && clap_count){
+    if (clap_count == 2)
+    {
+      Serial.println ("=================state changed==================");
+      offset_mean = get_offset_mean(avg_buf);
+      // hurdle = (offset_mean - avg_avg) * offset_rate;  루프 속으로 옮김.
+
+      if (!state_LED){
+        digitalWrite (LED_BUILTIN, HIGH);
+        state_LED = 1;
+      }
+      else{
+        digitalWrite (LED_BUILTIN, LOW);
+        state_LED = 0;
+      }
+      Clear();
+    }
+    else 
+    {
+      Clear();
+    }
+  }
+}
+
+
+
+
+/* 근 0.275*interval_avg s 동안의 소리 크기 평균을 구함
+    avg_tmp 배열에 돌아가며 가장 최신값을 대입하는 방식으로,
+    n평균 구하고 n초 쉬는 것이 아니라, 실시간으로 근 n초의 평균을 구함
+*/
+
+void Average(){
+
+  unsigned long sum_tmp = 0;
+
+  if (avg_pointer == AVG_INTERVAL) avg_pointer = 0;
+  avg_tmp[avg_pointer++] = avg_new;
+
+  for (int i = 0; i < AVG_INTERVAL; i++){
+    sum_tmp += avg_tmp[i];
+  }
+  avg_avg = sum_tmp / AVG_INTERVAL;
+}
+
+
+
+
+/* FFT Magnitude 가중평균 */
+void FFT_Weighted_Average(){
+  unsigned long sum_tmp = 0;
+  int WA_sum = 0;
+  for (int k = 0; k < WA_CASE; k++)
+  {
+      for (int i = WA_INTERVAL[k]; i < WA_INTERVAL[k+1]; i++)
+      {
+          sum_tmp += fht_log_out[i] * WA_WEIGHT[k];
+      }
+
+      WA_sum += (WA_INTERVAL[k+1] - WA_INTERVAL[k]) * WA_WEIGHT[k];
+  }    
+  avg_new = sum_tmp/WA_sum;
+}
+
+
+void loop() {
+    cli();    
+
+    for (int i = 0 ; i < FHT_N ; i++) {   
+      while(!(ADCSRA & 0x10)); 
+      uint8_t low = ADCL;
+      uint8_t high = ADCH;
+
+      int k = (high << 8 | low); 
+      k -= 512; 
+      k <<= 6; 
+      fht_input[i] = k; 
+
+      ADCSRA |= (1 << ADSC); 
+    }
+
+    fht_window(); 
+    fht_reorder(); 
+    fht_run(); 
+    fht_mag_log(); 
+    sei();
+
+    FFT_Weighted_Average();
+    Avg_Difference();
+    Clap_detect();
+    Doubleclap_detect();
+    Average();
+
+    interval_tcount++;
+
+    if (interval_tcount > 3000){
+      interval_tcount = 0;
+      Clear();
+    }
+
+    hurdle = (offset_mean - avg_avg) * RATE_OFFSET;       // hurdle은 avg_avg에 따라 실시간 변하므로 루프를 돌때마다 실행하도록 수정.
+    
+    if (hurdle < 20) hurdle = 20;                         // hurdle의 값이 너무 작은 경우, 계속 박수로 인식하는 경우가 생김. 따라서 최솟값 20을 설정.
+    Serial.print(offset_mean);
+    Serial.print(' ');     
+    Serial.print(hurdle);
+    Serial.print(' ');
+    Serial.print(avg_buf);
+    Serial.print(' ');
+    Serial.print(offset_pointer);
+    Serial.print(' ');
+    Serial.print(clap_count);
+    Serial.print(' ');
+    Serial.print(avg_new);
+    Serial.print(' ');
+    Serial.print(avg_avg);
+    Serial.println(' ');
+
+
+  // Serial.println(avg);
+}   
+#endif
